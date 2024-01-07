@@ -11,10 +11,15 @@ from haystack.utils import convert_files_to_docs
 import json
 import logging
 import uvicorn
-logging.basicConfig(level=logging.DEBUG)
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
+
+logging.basicConfig(level=logging.DEBUG)
+load_dotenv(override=True)
 # Generate embeddings
 document_store, retriever = None,None
 
@@ -37,9 +42,10 @@ app.add_middleware(
 
 
 pipe = Pipeline()
-HF_TOKEN = "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"
-# if not HF_TOKEN:
-#   raise Exception("Please set your HuggingFace API token as an environment variable: export HF_API_TOKEN=your_token(linux)")
+HF_TOKEN = os.getenv('HF_TOKEN')
+
+if not HF_TOKEN:
+  raise Exception("Please set your HuggingFace API token as an environment variable: export HF_API_TOKEN=your_token(linux)")
 
 
 
