@@ -48,13 +48,13 @@ def app():
     st.title("FastAPI Frontend with Streamlit")
 
     # Generate embeddings
-    
+    st.warning("Make sure the embeddings are generated prior to retrieving responses.")
     if st.button("Generate Embeddings"):
         generate_embeddings()
 
     # Retrieve embeddings
     query = st.text_input("Enter your query")
-    if st.button("Retrieve Embeddings"):
+    if st.button("Get answer"):
         retrieve_embeddings(query)
 
     # Upload file
