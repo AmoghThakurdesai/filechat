@@ -7,7 +7,7 @@ from haystack.nodes import PromptNode,PromptTemplate
 from haystack.schema import Document
 from fastapi.staticfiles import  StaticFiles
 from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter
-from haystack.utils import convert_files_to_docs
+from haystack.utils.preprocessing import convert_files_to_docs
 import json
 import logging
 import uvicorn
@@ -21,8 +21,10 @@ from dotenv import load_dotenv
 logging.basicConfig(level=logging.DEBUG)
 load_dotenv(override=True)
 # Generate embeddings
-document_store, retriever = None,None
 
+# the convert file to docs in upload isnt working correctly we need to fix that one
+document_store, retriever = None,None
+present = False
 
 origins = [
     "http://127.0.0.1:8000",  # Allow this origin
@@ -30,7 +32,6 @@ origins = [
 ]
 
 app = FastAPI()
-app.mount('/static',StaticFiles(directory="static"),name='static')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -73,45 +74,77 @@ def home():
 def generate():
     global document_store
     global retriever
-     
-    document_store,retriever = generate_embeddings()
-    pipe.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-    pipe.add_node(component=pn, name="prompt_node", inputs=["ESRetriever"])
+    global present
+    
+    document_store,retriever,present = generate_embeddings()
+    if not present:
+        pipe.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
+        pipe.add_node(component=pn, name="prompt_node", inputs=["ESRetriever"])
            
     return {"message": "Embeddings generated successfully"}
 
 @app.get("/retrieve_embeddings/{query}")
 def retrieve(query: str):
     if retriever:
+        
         results = pipe.run(query=query)
         print(f"\n\n\n\nReturned results from retriever\n\n\n\n\n\n")
         return {"results":results["results"][0]}
     else:
         return {"message": "Didnt generate embeddings. Generate embeddings first"}
         
+#TODO: optimization potential here if needed
 @app.post('/uploadfile/')
 async def create_upload_file(file: UploadFile = File(...)):
     contents = await file.read()
+    print(contents)
     if document_store:
         file_location = f"files/{file.filename}"
         with open(file_location, "wb+") as file_object:
             file_object.write(contents)
         
-
-        docs = convert_files_to_docs(dir_path=file_location)
+        print(contents)
+        docs = convert_files_to_docs(dir_path="files")
 
         print("\n\nConverted to docs\n\n")
+        print(docs)
         document_store.write_documents(documents=docs)
-        print("\n\nWritten docs docs\n\n")
+        print(f"\n\nWritten docs {docs}\n\n")
+
+        # Store the document id and the title of the file in a JSON file
         document_store.update_embeddings(retriever)
         print("\n\nUpdated Embeddings\n\n")
         document_store.save("faiss_index.faiss")
+
+        print("these are the docs\n\n\n\n")
+        documents = document_store.get_all_documents()
+        print(documents)
+# Now you can access the documents' content and embedding
+        
         
         return {"filename":file.filename,"message":"Embeddings updated"}
     else:
         return {"message": "Generate embeddings first"}
-    
 
+@app.get("/uploadedfiles")  
+def get_uploaded_files():
+    path = "files"
+    dir_list = os.listdir(path)
+    print("Files and directories in '", path, "' :")
+    print(dir_list)
+    return {"dirlist":dir_list}
+
+@app.post("/deletefile/{file}")
+def delete_file(file: str):
+    print("\n\nBefore Deletion\n\n")
+    documents = document_store.get_all_documents()
+    print(documents)
+    document_store.delete_documents(filters={"name":[file]})
+    document_store.update_embeddings(retriever)
+    document_store.save("faiss_index.faiss")
+    print("\n\nAfter Deletion\n\n")
+
+    return {"deletedfile":file}
 
 def load_retriever_config():
     with open('embedding_retriever_config.json', 'r') as f:
