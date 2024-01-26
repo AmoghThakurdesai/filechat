@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import os
+from streamlit_js_eval import streamlit_js_eval
 
 # Set the API URL
 API_URL = "http://localhost:8000"
@@ -32,6 +33,7 @@ def delete_file(file):
     response = requests.post(f"{API_URL}/deletefile/{file}")
     if response.status_code == 200:
         st.write("File deleted successfully")
+        streamlit_js_eval (js_expressions="parent.window.location.reload ()")
     else:
         st.write("Failed to delete file")
 

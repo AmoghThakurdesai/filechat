@@ -15,12 +15,11 @@ document_store,retriever = None, None
 
 def generate_embeddings():
 # Initialize FAISS document store.
-    document_store,retriever,present = None, None, False
+    document_store,retriever = None, None
     if(os.path.exists("faiss_document_store.db")):
         if os.path.exists('faiss_index.faiss'):
             document_store = FAISSDocumentStore.load(index_path="faiss_index.faiss")
             retriever = get_retriever(document_store=document_store)
-            present = True
         else:
             print("\n\n db not done embedding the docs. Delete the db file \n\n")
     else:
@@ -39,7 +38,7 @@ def generate_embeddings():
     
 
 
-    return document_store,retriever,present
+    return document_store,retriever
 
 def get_retriever(document_store):
     if(not os.path.exists("embedding_retriever_config.json")):

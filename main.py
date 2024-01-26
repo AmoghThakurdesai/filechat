@@ -76,9 +76,10 @@ def generate():
     global retriever
     global present
     
-    document_store,retriever,present = generate_embeddings()
-    if not present:
+    document_store,retriever = generate_embeddings()
+    if not pipe.get_node("ESRetriever"):
         pipe.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
+    if not pipe.get_node("prompt_node"):
         pipe.add_node(component=pn, name="prompt_node", inputs=["ESRetriever"])
            
     return {"message": "Embeddings generated successfully"}
@@ -143,6 +144,7 @@ def delete_file(file: str):
     document_store.update_embeddings(retriever)
     document_store.save("faiss_index.faiss")
     print("\n\nAfter Deletion\n\n")
+    os.remove(f"files/{file}")
 
     return {"deletedfile":file}
 
